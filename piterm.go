@@ -14,7 +14,10 @@ package main
  
 import (
     "os"
+    "fmt"
+    "sync"
     "strings"
+    "strconv"
     "github.com/coreyshuman/serial"
     "github.com/mattn/go-gtk/gtk"
 )
@@ -35,7 +38,7 @@ func main() {
     
     dev := os.Args[1]
 	baud := os.Args[2]
-	baudn, _ := strconv.Atoi(baudx)
+	baudn, _ := strconv.Atoi(baud)
     
     if(baudn < 1) {
         fmt.Println("Invalid Baud Rate")
@@ -61,6 +64,7 @@ func main() {
     
     serial.Init()
 	sid, err := serial.Connect(dev, baudn, timeout)
+	sid = sid
     if(err != nil) {
 		fmt.Println("Serial Connection Failed: " + err.Error())
 		return
@@ -87,11 +91,10 @@ func main() {
 	swin1.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 	swin1.SetShadowType(gtk.SHADOW_IN)
 	textview1 := gtk.NewTextView()
-	var start, end gtk.TextIter
 	bufAscii := textview1.GetBuffer()
-	//buffer.GetStartIter(&start)
-	buffer.GetEndIter(&end)
-	buffer.Insert(&end, "Hello")
+	bufAscii.GetStartIter(&start)
+	bufAscii.GetEndIter(&end)
+	bufAscii.Insert(&end, "Hello")
 	swin1.Add(textview1)
 	hbox1.Add(swin1)
     // textbox 2 (hex)
@@ -99,11 +102,10 @@ func main() {
 	swin2.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 	swin2.SetShadowType(gtk.SHADOW_IN)
 	textview2 := gtk.NewTextView()
-	var start, end gtk.TextIter
 	bufHex := textview2.GetBuffer()
 	//buffer.GetStartIter(&start)
-	buffer.GetEndIter(&end)
-	buffer.Insert(&end, "World!")
+	bufHex.GetEndIter(&end)
+	bufHex.Insert(&end, "World!")
 	swin2.Add(textview2)
 	hbox1.Add(swin2)
     // textbox and buttons
@@ -120,7 +122,7 @@ func main() {
 	window.ShowAll()
     
     go func() {
-		var d []byte
+		//var d []byte
 		wg.Add(1)
 		for {
 			select {
