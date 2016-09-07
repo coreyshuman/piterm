@@ -160,7 +160,7 @@ func main() {
 					bufAscii.GetEndIter(&e)
 					bufAscii.Insert(&e, string(d[:n]))
 					bufHex.GetEndIter(&e)
-					bufHex.Insert(&e, hex.Dump(d))
+					bufHex.Insert(&e, hex.EncodeToString(d[:n]))
 				}
 				time.Sleep(time.Millisecond*15)
 			}		
