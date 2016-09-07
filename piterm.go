@@ -19,6 +19,8 @@ import (
     "strings"
     "strconv"
     "runtime"
+	"time"
+	"encoding/hex"
     "github.com/coreyshuman/serial"
     "github.com/mattn/go-gtk/gtk"
 )
@@ -68,7 +70,6 @@ func main() {
     
     serial.Init()
 	sid, err := serial.Connect(dev, baudn, timeout)
-	sid = sid
     if(err != nil) {
 		fmt.Println("Serial Connection Failed: " + err.Error())
 		return
@@ -84,12 +85,13 @@ func main() {
 	window.Connect("destroy", func() {
 		quit <- true
 		wg.Wait()
+		serial.Disconnect(sid)
 		gtk.MainQuit()
 	})
     window.SetSizeRequest(hres, vres)
     vbox := gtk.NewVBox(false, 1)
     hbox1 := gtk.NewHBox(false, 1)
-    hbox2 := gtk.NewVBox(false, 1)
+    hbox2 := gtk.NewHBox(false, 1)
     // textbox 1 (ascii)
     swin1 := gtk.NewScrolledWindow(nil, nil)
 	swin1.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
@@ -98,7 +100,7 @@ func main() {
 	bufAscii := textview1.GetBuffer()
 	bufAscii.GetStartIter(&start)
 	bufAscii.GetEndIter(&end)
-	bufAscii.Insert(&end, "Hello")
+	//bufAscii.Insert(&end, "Hello")
 	swin1.Add(textview1)
 	hbox1.Add(swin1)
     // textbox 2 (hex)
@@ -107,16 +109,31 @@ func main() {
 	swin2.SetShadowType(gtk.SHADOW_IN)
 	textview2 := gtk.NewTextView()
 	bufHex := textview2.GetBuffer()
-	//buffer.GetStartIter(&start)
+	bufHex.GetStartIter(&start)
 	bufHex.GetEndIter(&end)
-	bufHex.Insert(&end, "World!")
+	//bufHex.Insert(&end, "World!")
 	swin2.Add(textview2)
 	hbox1.Add(swin2)
     // textbox and buttons
     textview3 := gtk.NewTextView()
+	bufSend := textview3.GetBuffer()
     hbox2.Add(textview3)
     btnSend := gtk.NewButtonWithLabel("Send")
+	btnSend.Clicked(func() {
+		bufSend.GetStartIter(&start)
+		bufSend.GetEndIter(&end)
+		sendData := bufSend.GetText(start, end, true)
+		serial.SendBytes(serialXBEE, []byte(sendData))
+	})
     btnClear := gtk.NewButtonWithLabel("Clear")
+	btnClear.Clicked(func() {
+		bufAscii.GetStartIter(&start)
+		bufAscii.GetEndIter(&end)
+		bufAscii.Delete(start, end)
+		bufHex.GetStartIter(&start)
+		bufHex.GetEndIter(&end)
+		bufHex.Delete(start, end)
+	})
     hbox2.Add(btnSend)
     hbox2.Add(btnClear)
     
@@ -126,7 +143,10 @@ func main() {
 	window.ShowAll()
     
     go func() {
-		//var d []byte
+		d := make([]byte, 256)
+		var e gtk.TextIter
+		var n int
+		var err error
 		wg.Add(1)
 		for {
 			select {
@@ -135,21 +155,14 @@ func main() {
 				wg.Done()
 				return
 			default:
-				mainApp()
-			}		
-		}
-	}()
-    go func() {
-		//var d []byte
-		wg.Add(1)
-		for {
-			select {
-			case <- quit:
-				closeApp()
-				wg.Done()
-				return
-			default:
-				mainApp()
+				n,err = serial.ReadBytes(serialXBEE, d)
+				if err == nil && n > 0 {
+					bufAscii.GetEndIter(&e)
+					bufAscii.Insert(&e, string(d[:n]))
+					bufHex.GetEndIter(&e)
+					bufHex.Insert(&e, hex.Dump(d))
+				}
+				time.Sleep(time.Millisecond*15)
 			}		
 		}
 	}()
@@ -158,9 +171,5 @@ func main() {
 }
 
 func closeApp() {
-    
-}
-
-func mainApp() {
     
 }
