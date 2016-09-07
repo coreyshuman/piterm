@@ -18,6 +18,7 @@ import (
     "sync"
     "strings"
     "strconv"
+    "runtime"
     "github.com/coreyshuman/serial"
     "github.com/mattn/go-gtk/gtk"
 )
@@ -30,6 +31,9 @@ func main() {
     hres := 480
     vres := 280
     var start, end gtk.TextIter
+
+    fmt.Println("Cores: " + strconv.Itoa(runtime.NumCPU()))
+    runtime.GOMAXPROCS(runtime.NumCPU())
     
     if len(os.Args) < 3 {
         fmt.Println("Usage: piterm /dev/tty1 115200 480x240")
@@ -121,6 +125,20 @@ func main() {
     window.Add(vbox)
 	window.ShowAll()
     
+    go func() {
+		//var d []byte
+		wg.Add(1)
+		for {
+			select {
+			case <- quit:
+				closeApp()
+				wg.Done()
+				return
+			default:
+				mainApp()
+			}		
+		}
+	}()
     go func() {
 		//var d []byte
 		wg.Add(1)
