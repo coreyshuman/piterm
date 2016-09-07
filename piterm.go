@@ -122,17 +122,17 @@ func main() {
 	btnSend.Clicked(func() {
 		bufSend.GetStartIter(&start)
 		bufSend.GetEndIter(&end)
-		sendData := bufSend.GetText(start, end, true)
-		serial.SendBytes(serialXBEE, []byte(sendData))
+		sendData := bufSend.GetText(&start, &end, true)
+		serial.SendBytes(sid, []byte(sendData))
 	})
     btnClear := gtk.NewButtonWithLabel("Clear")
 	btnClear.Clicked(func() {
 		bufAscii.GetStartIter(&start)
 		bufAscii.GetEndIter(&end)
-		bufAscii.Delete(start, end)
+		bufAscii.Delete(&start, &end)
 		bufHex.GetStartIter(&start)
 		bufHex.GetEndIter(&end)
-		bufHex.Delete(start, end)
+		bufHex.Delete(&start, &end)
 	})
     hbox2.Add(btnSend)
     hbox2.Add(btnClear)
@@ -155,7 +155,7 @@ func main() {
 				wg.Done()
 				return
 			default:
-				n,err = serial.ReadBytes(serialXBEE, d)
+				n,err = serial.ReadBytes(sid, d)
 				if err == nil && n > 0 {
 					bufAscii.GetEndIter(&e)
 					bufAscii.Insert(&e, string(d[:n]))
