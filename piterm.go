@@ -26,6 +26,7 @@ import (
 )
 
 const timeout = 5
+const XbeeInterDelay = 200
 // bb-8 head address
 const headAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x2a, 0x21}
 // bb-8 body address
@@ -178,6 +179,54 @@ func main() {
 
 func closeApp() {
     
+}
+
+func getXBEEInfo() {
+	/******** Get XBEE configuration info *********/
+	// get serial number high
+	time.Sleep(time.Millisecond*XbeeInterDelay)
+	d, n, err := xbeeapi.SendATCommand([]byte{byte('S'), byte('H')}, nil)
+	if(err != nil) {
+		fmt.Println("Send AT error: " + err.Error())
+	} else {
+		fmt.Println(fmt.Sprintf("Sent (%d): ", n) + hex.Dump(d))
+	}
+	
+	// get serial number low
+	time.Sleep(time.Millisecond*XbeeInterDelay)
+	d, n, err = xbeeapi.SendATCommand([]byte{byte('S'), byte('L')}, nil)
+	if(err != nil) {
+		fmt.Println("Send AT error: " + err.Error())
+	} else {
+		fmt.Println(fmt.Sprintf("Sent (%d): ", n) + hex.Dump(d))
+	}
+	
+	// get 16-bit network address
+	time.Sleep(time.Millisecond*XbeeInterDelay)
+	d, n, err = xbeeapi.SendATCommand([]byte{byte('M'), byte('Y')}, nil)
+	if(err != nil) {
+		fmt.Println("Send AT error: " + err.Error())
+	} else {
+		fmt.Println(fmt.Sprintf("Sent (%d): ", n) + hex.Dump(d))
+	}
+	
+	// get channel
+	time.Sleep(time.Millisecond*XbeeInterDelay)
+	d, n, err = xbeeapi.SendATCommand([]byte{byte('C'), byte('H')}, nil)
+	if(err != nil) {
+		fmt.Println("Send AT error: " + err.Error())
+	} else {
+		fmt.Println(fmt.Sprintf("Sent (%d): ", n) + hex.Dump(d))
+	}
+	
+	// get PAN ID
+	time.Sleep(time.Millisecond*XbeeInterDelay)
+	d, n, err = xbeeapi.SendATCommand([]byte{byte('I'), byte('D')}, nil)
+	if(err != nil) {
+		fmt.Println("Send AT error: " + err.Error())
+	} else {
+		fmt.Println(fmt.Sprintf("Sent (%d): ", n) + hex.Dump(d))
+	}
 }
 
 
