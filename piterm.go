@@ -28,13 +28,13 @@ import (
 const timeout = 5
 const XbeeInterDelay = 200
 // bb-8 head address
-const headAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x2a, 0x21}
+var headAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x2a, 0x21}
 // bb-8 body address
-const bodyAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x29, 0x23}
+var bodyAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x29, 0x23}
 
 // buffers
-var bufAscii *gtk.EntryBuffer = nil
-var bufHex *gtk.EntryBuffer = nil
+var bufAscii *gtk.TextBuffer = nil
+var bufHex *gtk.TextBuffer = nil
 
 func main() {
 	var wg sync.WaitGroup
@@ -78,7 +78,7 @@ func main() {
         }
     }
 	
-	_, err = xbeeapi.Init(devx, baudnx, 1)
+	_, err = xbeeapi.Init(dev, baudn, 1)
 	if(err != nil) {
 		fmt.Println("Error: " + err.Error())
 		return
@@ -87,7 +87,7 @@ func main() {
 	xbeeapi.SetupErrorHandler(errorCallback)
 	xbeeapi.SetupModemStatusCallback(modemStatusCallback)
 	xbeeapi.Begin()
-	fmt.Println("XBEE: " + fmt.Sprintf("%d",serialXBEE))
+	// fmt.Println("XBEE: " + fmt.Sprintf("%d",serialXBEE))
     
     gtk.Init(nil)
     
@@ -138,7 +138,7 @@ func main() {
 		bufSend.GetStartIter(&start)
 		bufSend.GetEndIter(&end)
 		sendData := bufSend.GetText(&start, &end, true)
-		_, _, err = xbeeapi.SendPacket(headAddress, []byte{0x00, 0x00}, 0x00, []byte(sendData))
+		_, _, err = xbeeapi.SendPacket(bodyAddress, []byte{0xFF, 0xFE}, 0x00, []byte(sendData))
 		if(err != nil) {
 			fmt.Println("Send Error: " + err.Error())
 		}
