@@ -43,6 +43,7 @@ func main() {
     vres := 280
     var start, end gtk.TextIter
 	var err error
+	var serialXBEE int
 
     fmt.Println("Cores: " + strconv.Itoa(runtime.NumCPU()))
     runtime.GOMAXPROCS(runtime.NumCPU())
@@ -78,7 +79,7 @@ func main() {
         }
     }
 	
-	_, err = xbeeapi.Init(dev, baudn, 1)
+	serialXBEE, err = xbeeapi.Init(dev, baudn, 1)
 	if(err != nil) {
 		fmt.Println("Error: " + err.Error())
 		return
@@ -86,10 +87,14 @@ func main() {
 	// configure xbee api and start job
 	xbeeapi.SetupErrorHandler(errorCallback)
 	xbeeapi.SetupModemStatusCallback(modemStatusCallback)
+	xbeeapi.SetupATCommandCallback(atCommandCallback)
+	xbeeapi.SetupReceivePacketCallback(receivePacketCallback)
 	xbeeapi.Begin()
-	// fmt.Println("XBEE: " + fmt.Sprintf("%d",serialXBEE))
+	fmt.Println("XBEE: " + fmt.Sprintf("%d",serialXBEE))
     
     gtk.Init(nil)
+	
+	getXBEEInfo()
     
     // Initialize GUI
 	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
@@ -100,7 +105,6 @@ func main() {
 		quit <- true
 		xbeeapi.Close()
 		wg.Wait()
-		time.Sleep(time.Millisecond*30)
 		gtk.MainQuit()
 	})
     window.SetSizeRequest(hres, vres)
@@ -138,7 +142,7 @@ func main() {
 		bufSend.GetStartIter(&start)
 		bufSend.GetEndIter(&end)
 		sendData := bufSend.GetText(&start, &end, true)
-		_, _, err = xbeeapi.SendPacket(bodyAddress, []byte{0xFF, 0xFE}, 0x00, []byte(sendData))
+		_, _, err = xbeeapi.SendPacket(bodyAddress, nil, 0x00, []byte(sendData))
 		if(err != nil) {
 			fmt.Println("Send Error: " + err.Error())
 		}
