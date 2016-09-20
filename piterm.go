@@ -21,11 +21,19 @@ import (
     "runtime"
 	"time"
 	"encoding/hex"
-    "github.com/coreyshuman/serial"
     "github.com/mattn/go-gtk/gtk"
+	"github.com/coreyshuman/xbeeapi"
 )
 
 const timeout = 5
+// bb-8 head address
+const headAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x2a, 0x21}
+// bb-8 body address
+const bodyAddress = []byte{0x00, 0x13, 0xa2, 0x00, 0x40, 0x90, 0x29, 0x23}
+
+// buffers
+var bufAscii *gtk.EntryBuffer = nil
+var bufHex *gtk.EntryBuffer = nil
 
 func main() {
 	var wg sync.WaitGroup
@@ -33,6 +41,7 @@ func main() {
     hres := 480
     vres := 280
     var start, end gtk.TextIter
+	var err error
 
     fmt.Println("Cores: " + strconv.Itoa(runtime.NumCPU()))
     runtime.GOMAXPROCS(runtime.NumCPU())
@@ -67,13 +76,17 @@ func main() {
             return
         }
     }
-    
-    serial.Init()
-	sid, err := serial.Connect(dev, baudn, timeout)
-    if(err != nil) {
-		fmt.Println("Serial Connection Failed: " + err.Error())
+	
+	_, err = xbeeapi.Init(devx, baudnx, 1)
+	if(err != nil) {
+		fmt.Println("Error: " + err.Error())
 		return
 	}
+	// configure xbee api and start job
+	xbeeapi.SetupErrorHandler(errorCallback)
+	xbeeapi.SetupModemStatusCallback(modemStatusCallback)
+	xbeeapi.Begin()
+	fmt.Println("XBEE: " + fmt.Sprintf("%d",serialXBEE))
     
     gtk.Init(nil)
     
@@ -84,8 +97,9 @@ func main() {
 	window.SetIconName("gtk-dialog-info")
 	window.Connect("destroy", func() {
 		quit <- true
+		xbeeapi.Close()
 		wg.Wait()
-		serial.Disconnect(sid)
+		time.Sleep(time.Millisecond*30)
 		gtk.MainQuit()
 	})
     window.SetSizeRequest(hres, vres)
@@ -97,7 +111,7 @@ func main() {
 	swin1.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 	swin1.SetShadowType(gtk.SHADOW_IN)
 	textview1 := gtk.NewTextView()
-	bufAscii := textview1.GetBuffer()
+	bufAscii = textview1.GetBuffer()
 	bufAscii.GetStartIter(&start)
 	bufAscii.GetEndIter(&end)
 	//bufAscii.Insert(&end, "Hello")
@@ -108,7 +122,7 @@ func main() {
 	swin2.SetPolicy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 	swin2.SetShadowType(gtk.SHADOW_IN)
 	textview2 := gtk.NewTextView()
-	bufHex := textview2.GetBuffer()
+	bufHex = textview2.GetBuffer()
 	bufHex.GetStartIter(&start)
 	bufHex.GetEndIter(&end)
 	//bufHex.Insert(&end, "World!")
@@ -123,7 +137,10 @@ func main() {
 		bufSend.GetStartIter(&start)
 		bufSend.GetEndIter(&end)
 		sendData := bufSend.GetText(&start, &end, true)
-		serial.SendBytes(sid, []byte(sendData))
+		_, _, err = xbeeapi.SendPacket(headAddress, []byte{0x00, 0x00}, 0x00, []byte(sendData))
+		if(err != nil) {
+			fmt.Println("Send Error: " + err.Error())
+		}
 	})
     btnClear := gtk.NewButtonWithLabel("Clear")
 	btnClear.Clicked(func() {
@@ -143,10 +160,6 @@ func main() {
 	window.ShowAll()
     
     go func() {
-		d := make([]byte, 256)
-		var e gtk.TextIter
-		var n int
-		var err error
 		wg.Add(1)
 		for {
 			select {
@@ -155,14 +168,7 @@ func main() {
 				wg.Done()
 				return
 			default:
-				n,err = serial.ReadBytes(sid, d)
-				if err == nil && n > 0 {
-					bufAscii.GetEndIter(&e)
-					bufAscii.Insert(&e, string(d[:n]))
-					bufHex.GetEndIter(&e)
-					bufHex.Insert(&e, hex.EncodeToString(d[:n]))
-				}
-				time.Sleep(time.Millisecond*15)
+				time.Sleep(time.Millisecond*30)
 			}		
 		}
 	}()
@@ -172,4 +178,29 @@ func main() {
 
 func closeApp() {
     
+}
+
+
+/************** Callback Functions ****************/
+func errorCallback(e error) {
+	fmt.Println(e.Error())
+}
+
+var atCommandCallback xbeeapi.ATCommandCallbackFunc = func(frameId byte, data []byte) {
+	fmt.Println("AT Response: ")
+	fmt.Println(hex.Dump(data))
+}
+
+var receivePacketCallback xbeeapi.ReceivePacketCallbackFunc = func(destinationAddress64 [8]byte, destinationAddress16 [2]byte, receiveOptions byte, data []byte) {
+	var e gtk.TextIter
+	
+	bufAscii.GetEndIter(&e)
+	bufAscii.Insert(&e, string(data[:]))
+	bufHex.GetEndIter(&e)
+	bufHex.Insert(&e, hex.EncodeToString(data[:]))
+}
+
+var modemStatusCallback xbeeapi.ModemStatusCallbackFunc = func(status byte) {
+	modemStatus := xbeeapi.GetModemStatusDescription(status)
+	fmt.Println("Modem Status: " + modemStatus)
 }
